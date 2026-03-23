@@ -4,6 +4,7 @@ import { Api, Bot } from 'grammy';
 import { ASSISTANT_NAME, TRIGGER_PATTERN } from '../config.js';
 import { readEnvFile } from '../env.js';
 import { logger } from '../logger.js';
+import { transcribeAudio } from '../transcription.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 import {
   Channel,
@@ -201,7 +202,50 @@ export class TelegramChannel implements Channel {
 
     this.bot.on('message:photo', (ctx) => storeNonText(ctx, '[Photo]'));
     this.bot.on('message:video', (ctx) => storeNonText(ctx, '[Video]'));
-    this.bot.on('message:voice', (ctx) => storeNonText(ctx, '[Voice message]'));
+    this.bot.on('message:voice', async (ctx) => {
+      const chatJid = `tg:${ctx.chat.id}`;
+      const group = this.opts.registeredGroups()[chatJid];
+      if (!group) return;
+
+      const timestamp = new Date(ctx.message.date * 1000).toISOString();
+      const senderName =
+        ctx.from?.first_name ||
+        ctx.from?.username ||
+        ctx.from?.id?.toString() ||
+        'Unknown';
+      const isGroup =
+        ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
+      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+
+      let content = '[Voice message - transcription unavailable]';
+      try {
+        const file = await this.bot!.api.getFile(ctx.message.voice.file_id);
+        const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
+        const audioBuffer = await new Promise<Buffer>((resolve, reject) => {
+          https.get(fileUrl, (res) => {
+            const chunks: Buffer[] = [];
+            res.on('data', (chunk: Buffer) => chunks.push(chunk));
+            res.on('end', () => resolve(Buffer.concat(chunks)));
+            res.on('error', reject);
+          }).on('error', reject);
+        });
+        const transcript = await transcribeAudio(audioBuffer, 'voice.ogg');
+        content = transcript ? `[Voice: ${transcript}]` : '[Voice message - transcription failed]';
+      } catch (err) {
+        logger.error({ err }, 'Failed to download voice message');
+        content = '[Voice message - transcription failed]';
+      }
+
+      this.opts.onMessage(chatJid, {
+        id: ctx.message.message_id.toString(),
+        chat_jid: chatJid,
+        sender: ctx.from?.id?.toString() || '',
+        sender_name: senderName,
+        content,
+        timestamp,
+        is_from_me: false,
+      });
+    });
     this.bot.on('message:audio', (ctx) => storeNonText(ctx, '[Audio]'));
     this.bot.on('message:document', (ctx) => {
       const name = ctx.message.document?.file_name || 'file';
