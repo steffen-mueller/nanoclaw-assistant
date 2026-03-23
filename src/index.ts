@@ -57,6 +57,8 @@ import {
   shouldDropMessage,
 } from './sender-allowlist.js';
 import { startSchedulerLoop } from './task-scheduler.js';
+import { startEmailPoller } from './email-poller.js';
+import { OFFICE365_MAILBOXES } from './config.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 
@@ -647,6 +649,17 @@ async function main(): Promise<void> {
       }
     },
   });
+  // Start email poller if Office 365 is configured
+  if (OFFICE365_MAILBOXES.length > 0) {
+    const mainEntry = Object.entries(registeredGroups).find(
+      ([, g]) => g.isMain,
+    );
+    if (mainEntry) {
+      const [mainJid, mainGroup] = mainEntry;
+      startEmailPoller(channelOpts.onMessage, mainJid, mainGroup.folder);
+    }
+  }
+
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();
   startMessageLoop().catch((err) => {

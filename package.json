@@ -21,6 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@azure/msal-node": "^5.1.1",
     "better-sqlite3": "^11.8.1",
     "cron-parser": "^5.5.0",
     "grammy": "^1.39.3",

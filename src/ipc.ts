@@ -8,6 +8,15 @@ import { AvailableGroup } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
+import {
+  archiveMessage,
+  createDraft,
+  moveToJunk,
+  createEvent,
+  updateEvent,
+  deleteEvent,
+  listEvents,
+} from './msgraph.js';
 import { RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
@@ -172,6 +181,21 @@ export async function processTaskIpc(
     trigger?: string;
     requiresTrigger?: boolean;
     containerConfig?: RegisteredGroup['containerConfig'];
+    // For email_draft
+    mailbox?: string;
+    to?: string;
+    subject?: string;
+    body?: string;
+    reply_to_message_id?: string;
+    // For email_action
+    message_id?: string;
+    action?: string;
+    // For calendar_event
+    start?: string;
+    end?: string;
+    location?: string;
+    attendees?: string[];
+    event_id?: string;
   },
   sourceGroup: string, // Verified identity from IPC directory
   isMain: boolean, // Verified from directory path
@@ -452,6 +476,125 @@ export async function processTaskIpc(
           { data },
           'Invalid register_group request - missing required fields',
         );
+      }
+      break;
+
+    case 'email_draft':
+      if (data.mailbox && data.to && data.subject && data.body) {
+        try {
+          const draftId = await createDraft(
+            data.mailbox,
+            data.to,
+            data.subject,
+            data.body,
+            data.reply_to_message_id,
+          );
+          logger.info(
+            { mailbox: data.mailbox, draftId, sourceGroup },
+            'Email draft created via IPC',
+          );
+        } catch (err) {
+          logger.error(
+            { mailbox: data.mailbox, sourceGroup, err },
+            'email_draft IPC failed',
+          );
+        }
+      } else {
+        logger.warn({ data }, 'email_draft missing required fields');
+      }
+      break;
+
+    case 'email_action':
+      if (data.mailbox && data.message_id && data.action) {
+        try {
+          if (data.action === 'junk') {
+            await moveToJunk(data.mailbox, data.message_id);
+            logger.info(
+              { mailbox: data.mailbox, messageId: data.message_id, sourceGroup },
+              'Email moved to junk via IPC',
+            );
+          } else if (data.action === 'archive') {
+            await archiveMessage(data.mailbox, data.message_id);
+            logger.info(
+              { mailbox: data.mailbox, messageId: data.message_id, sourceGroup },
+              'Email archived via IPC',
+            );
+          } else {
+            logger.warn({ action: data.action }, 'Unknown email_action');
+          }
+        } catch (err) {
+          logger.error({ data, sourceGroup, err }, 'email_action IPC failed');
+        }
+      }
+      break;
+
+    case 'calendar_event':
+      if (data.mailbox && data.action) {
+        try {
+          if (data.action === 'list' && data.start && data.end) {
+            const events = await listEvents(data.mailbox, data.start, data.end);
+            logger.info(
+              { mailbox: data.mailbox, count: events.length, sourceGroup },
+              'Calendar events listed via IPC',
+            );
+            // Events are logged; Kim reads them via the next poll or agent output
+          } else if (
+            (data.action === 'create' || data.action === 'update') &&
+            data.subject &&
+            data.start &&
+            data.end
+          ) {
+            const graphEvent = {
+              subject: data.subject,
+              start: { dateTime: data.start, timeZone: 'UTC' },
+              end: { dateTime: data.end, timeZone: 'UTC' },
+              ...(data.location
+                ? { location: { displayName: data.location } }
+                : {}),
+              ...(data.body
+                ? { body: { contentType: 'Text' as const, content: data.body } }
+                : {}),
+              ...(data.attendees?.length
+                ? {
+                    attendees: data.attendees.map((addr) => ({
+                      emailAddress: { address: addr },
+                      type: 'required' as const,
+                    })),
+                  }
+                : {}),
+            };
+            if (data.action === 'create') {
+              await createEvent(data.mailbox, graphEvent);
+            } else if (data.event_id) {
+              await updateEvent(data.mailbox, data.event_id, graphEvent);
+            }
+            logger.info(
+              { mailbox: data.mailbox, action: data.action, sourceGroup },
+              'Calendar event action via IPC',
+            );
+          } else {
+            logger.warn({ data }, 'calendar_event missing required fields');
+          }
+        } catch (err) {
+          logger.error({ data, sourceGroup, err }, 'calendar_event IPC failed');
+        }
+      }
+      break;
+
+    case 'calendar_delete':
+      if (data.mailbox && data.event_id) {
+        try {
+          await deleteEvent(data.mailbox, data.event_id);
+          logger.info(
+            { mailbox: data.mailbox, eventId: data.event_id, sourceGroup },
+            'Calendar event deleted via IPC',
+          );
+        } catch (err) {
+          logger.error(
+            { data, sourceGroup, err },
+            'calendar_delete IPC failed',
+          );
+        }
       }
       break;
 
