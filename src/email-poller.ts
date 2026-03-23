@@ -55,8 +55,7 @@ function isWhitelisted(from: string, whitelist: EmailWhitelist): boolean {
 
 function getConfiguredMailboxes(): string[] {
   const env = readEnvFile(['OFFICE365_MAILBOXES']);
-  const raw =
-    process.env.OFFICE365_MAILBOXES || env.OFFICE365_MAILBOXES || '';
+  const raw = process.env.OFFICE365_MAILBOXES || env.OFFICE365_MAILBOXES || '';
   return raw
     .split(',')
     .map((m) => m.trim())
@@ -114,7 +113,11 @@ function formatEmail(mailbox: string, msg: GraphMessage): string {
 }
 
 function appendToDigestQueue(groupFolder: string, entry: object): void {
-  const queueFile = path.join(GROUPS_DIR, groupFolder, 'email-digest-queue.json');
+  const queueFile = path.join(
+    GROUPS_DIR,
+    groupFolder,
+    'email-digest-queue.json',
+  );
   let queue: object[] = [];
   try {
     if (fs.existsSync(queueFile)) {

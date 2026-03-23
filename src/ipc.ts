@@ -510,13 +510,21 @@ export async function processTaskIpc(
           if (data.action === 'junk') {
             await moveToJunk(data.mailbox, data.message_id);
             logger.info(
-              { mailbox: data.mailbox, messageId: data.message_id, sourceGroup },
+              {
+                mailbox: data.mailbox,
+                messageId: data.message_id,
+                sourceGroup,
+              },
               'Email moved to junk via IPC',
             );
           } else if (data.action === 'archive') {
             await archiveMessage(data.mailbox, data.message_id);
             logger.info(
-              { mailbox: data.mailbox, messageId: data.message_id, sourceGroup },
+              {
+                mailbox: data.mailbox,
+                messageId: data.message_id,
+                sourceGroup,
+              },
               'Email archived via IPC',
             );
           } else {

@@ -32,8 +32,7 @@ function getCredentials() {
     clientId: process.env.OFFICE365_CLIENT_ID || env.OFFICE365_CLIENT_ID || '',
     clientSecret:
       process.env.OFFICE365_CLIENT_SECRET || env.OFFICE365_CLIENT_SECRET || '',
-    tenantId:
-      process.env.OFFICE365_TENANT_ID || env.OFFICE365_TENANT_ID || '',
+    tenantId: process.env.OFFICE365_TENANT_ID || env.OFFICE365_TENANT_ID || '',
     refreshToken:
       process.env.OFFICE365_REFRESH_TOKEN || env.OFFICE365_REFRESH_TOKEN || '',
   };
@@ -93,9 +92,7 @@ async function graphRequest(
         headers: {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
-          ...(bodyStr
-            ? { 'Content-Length': Buffer.byteLength(bodyStr) }
-            : {}),
+          ...(bodyStr ? { 'Content-Length': Buffer.byteLength(bodyStr) } : {}),
         },
       },
       (res) => {
