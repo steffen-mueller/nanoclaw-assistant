@@ -215,22 +215,32 @@ export class TelegramChannel implements Channel {
         'Unknown';
       const isGroup =
         ctx.chat.type === 'group' || ctx.chat.type === 'supergroup';
-      this.opts.onChatMetadata(chatJid, timestamp, undefined, 'telegram', isGroup);
+      this.opts.onChatMetadata(
+        chatJid,
+        timestamp,
+        undefined,
+        'telegram',
+        isGroup,
+      );
 
       let content = '[Voice message - transcription unavailable]';
       try {
         const file = await this.bot!.api.getFile(ctx.message.voice.file_id);
         const fileUrl = `https://api.telegram.org/file/bot${this.botToken}/${file.file_path}`;
         const audioBuffer = await new Promise<Buffer>((resolve, reject) => {
-          https.get(fileUrl, (res) => {
-            const chunks: Buffer[] = [];
-            res.on('data', (chunk: Buffer) => chunks.push(chunk));
-            res.on('end', () => resolve(Buffer.concat(chunks)));
-            res.on('error', reject);
-          }).on('error', reject);
+          https
+            .get(fileUrl, (res) => {
+              const chunks: Buffer[] = [];
+              res.on('data', (chunk: Buffer) => chunks.push(chunk));
+              res.on('end', () => resolve(Buffer.concat(chunks)));
+              res.on('error', reject);
+            })
+            .on('error', reject);
         });
         const transcript = await transcribeAudio(audioBuffer, 'voice.ogg');
-        content = transcript ? `[Voice: ${transcript}]` : '[Voice message - transcription failed]';
+        content = transcript
+          ? `[Voice: ${transcript}]`
+          : '[Voice message - transcription failed]';
       } catch (err) {
         logger.error({ err }, 'Failed to download voice message');
         content = '[Voice message - transcription failed]';
