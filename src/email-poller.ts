@@ -14,6 +14,8 @@ import {
   listNewMessages,
   markRead,
   archiveMessage,
+  getThreadMessages,
+  getRecentSenderMessages,
   GraphMessage,
 } from './msgraph.js';
 import { OnInboundMessage } from './types.js';
@@ -113,6 +115,36 @@ function formatEmail(mailbox: string, msg: GraphMessage): string {
   ].join('\n');
 }
 
+const CONTEXT_BODY_LIMIT = 2048;
+const CONTEXT_MAX_MESSAGES = 5;
+
+function formatEmailContext(messages: GraphMessage[]): string {
+  if (messages.length === 0) return '';
+  const parts = messages.map((msg) => {
+    const from = msg.from?.emailAddress
+      ? `${msg.from.emailAddress.name} <${msg.from.emailAddress.address}>`
+      : '(unknown)';
+    const date = new Date(msg.receivedDateTime).toLocaleString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    let body =
+      msg.body.contentType === 'html'
+        ? stripHtml(msg.body.content)
+        : msg.body.content;
+    if (body.length > CONTEXT_BODY_LIMIT) {
+      body = body.slice(0, CONTEXT_BODY_LIMIT) + '\n[...truncated]';
+    }
+    return `--- ${date} | From: ${from} | Subject: ${msg.subject || '(no subject)'} ---\n${body}`;
+  });
+  return (
+    '\n\n<email_thread_history>\n' + parts.join('\n\n') + '\n</email_thread_history>'
+  );
+}
+
 function appendToNewsletterQueue(groupFolder: string, entry: object): void {
   const queueFile = path.join(
     GROUPS_DIR,
@@ -162,7 +194,30 @@ async function poll(
           await markRead(mailbox, msg.id);
           await archiveMessage(mailbox, msg.id);
         } else {
-          const content = formatEmail(mailbox, msg);
+          let contextBlock = '';
+          try {
+            let contextMessages = await getThreadMessages(
+              mailbox,
+              msg.conversationId,
+              msg.id,
+              CONTEXT_MAX_MESSAGES,
+            );
+            if (contextMessages.length === 0) {
+              contextMessages = await getRecentSenderMessages(
+                mailbox,
+                fromAddr,
+                msg.id,
+                CONTEXT_MAX_MESSAGES,
+              );
+            }
+            contextBlock = formatEmailContext(contextMessages);
+          } catch (err) {
+            logger.warn(
+              { mailbox, messageId: msg.id, err },
+              'Failed to fetch email context',
+            );
+          }
+          const content = formatEmail(mailbox, msg) + contextBlock;
           const timestamp = new Date().toISOString();
           onMessage(targetJid, {
             id: `email-${msg.id}`,

@@ -353,6 +353,65 @@ export async function markRead(
   );
 }
 
+/**
+ * Fetch previous messages in the same conversation thread, ordered newest first.
+ * Excludes the current message. Returns at most `limit` results.
+ */
+export async function getThreadMessages(
+  mailbox: string,
+  conversationId: string,
+  currentMessageId: string,
+  limit = 5,
+): Promise<GraphMessage[]> {
+  const filter = encodeURIComponent(`conversationId eq '${conversationId}'`);
+  const select =
+    'id,subject,from,toRecipients,receivedDateTime,body,isRead,conversationId';
+  const endpoint = `/users/${encodeURIComponent(mailbox)}/messages?$filter=${filter}&$select=${select}&$orderby=receivedDateTime%20desc&$top=${limit + 1}`;
+  const res = await graphRequest('GET', endpoint);
+  if (res.status !== 200) {
+    logger.warn(
+      { mailbox, conversationId, status: res.status },
+      'getThreadMessages failed',
+    );
+    return [];
+  }
+  const data = res.data as { value?: GraphMessage[] };
+  return (data.value || [])
+    .filter((m) => m.id !== currentMessageId)
+    .slice(0, limit);
+}
+
+/**
+ * Fetch recent messages from the same sender, ordered newest first.
+ * Excludes the current message. Used as fallback when this is the first
+ * message in a thread. Returns at most `limit` results.
+ */
+export async function getRecentSenderMessages(
+  mailbox: string,
+  senderAddress: string,
+  currentMessageId: string,
+  limit = 5,
+): Promise<GraphMessage[]> {
+  const filter = encodeURIComponent(
+    `from/emailAddress/address eq '${senderAddress}'`,
+  );
+  const select =
+    'id,subject,from,toRecipients,receivedDateTime,body,isRead,conversationId';
+  const endpoint = `/users/${encodeURIComponent(mailbox)}/messages?$filter=${filter}&$select=${select}&$orderby=receivedDateTime%20desc&$top=${limit + 1}`;
+  const res = await graphRequest('GET', endpoint);
+  if (res.status !== 200) {
+    logger.warn(
+      { mailbox, senderAddress, status: res.status },
+      'getRecentSenderMessages failed',
+    );
+    return [];
+  }
+  const data = res.data as { value?: GraphMessage[] };
+  return (data.value || [])
+    .filter((m) => m.id !== currentMessageId)
+    .slice(0, limit);
+}
+
 // ─── Calendar ─────────────────────────────────────────────────────────────
 
 export interface GraphEvent {
