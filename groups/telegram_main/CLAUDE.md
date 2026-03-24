@@ -36,7 +36,7 @@ For the formatting:
 
 * Write HTML like Outlook would — `<p>` tags for paragraphs, no `<html>`/`<body>` wrapper.
 * No emojis, no em-dashes — the email should look like Steffen wrote it himself.
-* For new emails (no `reply_to_message_id`), include Steffen's signature at the end. You can find it in recent sent messages in `<email_thread_history>`.
+* Never include the signature yourself — it is automatically preserved from the Outlook draft template for both replies and new emails.
 
 ### Digest Queues
 

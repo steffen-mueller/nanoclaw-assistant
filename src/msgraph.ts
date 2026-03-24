@@ -299,21 +299,42 @@ export async function createDraft(
     return draft.id;
   }
 
-  endpoint = `/users/${encodeURIComponent(mailbox)}/messages`;
-  payload = {
-    subject,
-    body: { contentType: 'HTML', content: body },
-    toRecipients: [{ emailAddress: { address: to } }],
-    isDraft: true,
+  // Create the draft with no body first so Outlook can inject the default
+  // signature, then inject Kim's content at the top of the resulting body.
+  const newRes = await graphRequest(
+    'POST',
+    `/users/${encodeURIComponent(mailbox)}/messages`,
+    {
+      subject,
+      toRecipients: [{ emailAddress: { address: to } }],
+      isDraft: true,
+    },
+  );
+  const newDraft = newRes.data as {
+    id?: string;
+    body?: { content: string; contentType: string };
   };
-  const res = await graphRequest('POST', endpoint, payload);
-  const draft = res.data as { id?: string };
-  if (!draft.id) {
-    logger.error({ mailbox, status: res.status }, 'createDraft failed');
+  if (!newDraft.id) {
+    logger.error({ mailbox, status: newRes.status }, 'createDraft failed');
     return null;
   }
-  logger.info({ mailbox, draftId: draft.id }, 'Draft created in Outlook');
-  return draft.id;
+  const existing = newDraft.body?.content || '';
+  const combined = existing.match(/<body[^>]*>/i)
+    ? existing.replace(/<body[^>]*>/i, (tag) => tag + body + '<br><br>')
+    : body + (existing ? '<br><br>' + existing : '');
+  const updateRes = await graphRequest(
+    'PATCH',
+    `/users/${encodeURIComponent(mailbox)}/messages/${newDraft.id}`,
+    { body: { contentType: 'HTML', content: combined } },
+  );
+  if (updateRes.status !== 200) {
+    logger.error(
+      { mailbox, draftId: newDraft.id },
+      'New draft body update failed',
+    );
+  }
+  logger.info({ mailbox, draftId: newDraft.id }, 'Draft created in Outlook');
+  return newDraft.id;
 }
 
 export async function moveToJunk(
