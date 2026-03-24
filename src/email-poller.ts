@@ -141,7 +141,9 @@ function formatEmailContext(messages: GraphMessage[]): string {
     return `--- ${date} | From: ${from} | Subject: ${msg.subject || '(no subject)'} ---\n${body}`;
   });
   return (
-    '\n\n<email_thread_history>\n' + parts.join('\n\n') + '\n</email_thread_history>'
+    '\n\n<email_thread_history>\n' +
+    parts.join('\n\n') +
+    '\n</email_thread_history>'
   );
 }
 

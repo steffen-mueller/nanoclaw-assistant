@@ -492,7 +492,13 @@ export async function processTaskIpc(
             data.reply_to_message_id,
           );
           logger.info(
-            { mailbox: data.mailbox, to: data.to, subject: data.subject, draftId, sourceGroup },
+            {
+              mailbox: data.mailbox,
+              to: data.to,
+              subject: data.subject,
+              draftId,
+              sourceGroup,
+            },
             'Email draft created via IPC',
           );
         } catch (err) {
