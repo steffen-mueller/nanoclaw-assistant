@@ -10,7 +10,12 @@ import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
 import Holidays from 'date-holidays';
 
-import { CALENDAR_HOLIDAYS_LOCALE, CALENDAR_LOOKAHEAD_DAYS, CALENDAR_TIMEZONE, GROUPS_DIR } from './config.js';
+import {
+  CALENDAR_HOLIDAYS_LOCALE,
+  CALENDAR_LOOKAHEAD_DAYS,
+  CALENDAR_TIMEZONE,
+  GROUPS_DIR,
+} from './config.js';
 import {
   isConfigured,
   listNewMessages,
@@ -315,7 +320,8 @@ async function refreshCalendarEvents(
           end: toLocalDateTime(event.end.dateTime, CALENDAR_TIMEZONE),
         };
 
-        if (event.showAs && event.showAs !== 'busy') record.status = event.showAs;
+        if (event.showAs && event.showAs !== 'busy')
+          record.status = event.showAs;
 
         const bodyText = event.body?.content
           ? stripHtml(event.body.content).trim()
@@ -376,11 +382,19 @@ async function refreshCalendarEvents(
   // Sort all events (real + holidays) by start time
   allEvents.sort((a, b) => a.start.localeCompare(b.start));
 
-  const resultFile = path.join(GROUPS_DIR, targetFolder, 'calendar-events.json');
+  const resultFile = path.join(
+    GROUPS_DIR,
+    targetFolder,
+    'calendar-events.json',
+  );
   try {
     fs.writeFileSync(
       resultFile,
-      JSON.stringify({ updatedAt: now.toISOString(), events: allEvents }, null, 2),
+      JSON.stringify(
+        { updatedAt: now.toISOString(), events: allEvents },
+        null,
+        2,
+      ),
     );
     logger.debug(
       { count: allEvents.length, lookaheadDays: CALENDAR_LOOKAHEAD_DAYS },
