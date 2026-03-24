@@ -58,6 +58,7 @@ import {
 } from './sender-allowlist.js';
 import { startSchedulerLoop } from './task-scheduler.js';
 import { startEmailPoller } from './email-poller.js';
+import { startCommunityDigestScheduler } from './whatsapp-community-scheduler.js';
 import { OFFICE365_MAILBOXES } from './config.js';
 import { Channel, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
@@ -575,6 +576,7 @@ async function main(): Promise<void> {
       isGroup?: boolean,
     ) => storeChatMetadata(chatJid, timestamp, name, channel, isGroup),
     registeredGroups: () => registeredGroups,
+    mainFolder: Object.values(registeredGroups).find((g) => g.isMain)?.folder,
   };
 
   // Create and connect all registered channels.
@@ -659,6 +661,12 @@ async function main(): Promise<void> {
       startEmailPoller(channelOpts.onMessage, mainJid, mainGroup.folder);
     }
   }
+
+  // Start WhatsApp community digest scheduler
+  startCommunityDigestScheduler(
+    channelOpts.onMessage,
+    () => registeredGroups,
+  );
 
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();

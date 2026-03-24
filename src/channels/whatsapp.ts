@@ -25,6 +25,11 @@ import {
   OnChatMetadata,
   RegisteredGroup,
 } from '../types.js';
+import {
+  buildCommunityIndex,
+  bufferCommunityMessage,
+  loadCommunityGroups,
+} from '../whatsapp-community.js';
 import { registerChannel, ChannelOpts } from './registry.js';
 
 const GROUP_SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
@@ -33,6 +38,7 @@ export interface WhatsAppChannelOpts {
   onMessage: OnInboundMessage;
   onChatMetadata: OnChatMetadata;
   registeredGroups: () => Record<string, RegisteredGroup>;
+  mainFolder?: string; // folder name of the main group, for community buffering
 }
 
 export class WhatsAppChannel implements Channel {
@@ -235,6 +241,33 @@ export class WhatsAppChannel implements Channel {
               is_from_me: fromMe,
               is_bot_message: isBotMessage,
             });
+          } else if (this.opts.mainFolder && isGroup && !msg.key.fromMe) {
+            // Check if this is a community group we should buffer
+            const communityGroups = loadCommunityGroups(this.opts.mainFolder);
+            const communityIndex = buildCommunityIndex(communityGroups);
+            const communityEntry = communityIndex.get(chatJid);
+            if (communityEntry) {
+              const content =
+                normalized.conversation ||
+                normalized.extendedTextMessage?.text ||
+                normalized.imageMessage?.caption ||
+                normalized.videoMessage?.caption ||
+                '';
+              if (content) {
+                bufferCommunityMessage(this.opts.mainFolder, communityEntry, {
+                  group: communityEntry.name,
+                  sender: msg.pushName || (msg.key.participant || '').split('@')[0],
+                  content,
+                  timestamp,
+                });
+                // Mark as read immediately
+                await this.sock.readMessages([msg.key]);
+                logger.debug(
+                  { community: communityEntry.community, group: communityEntry.name },
+                  'Community message buffered and marked read',
+                );
+              }
+            }
           }
         } catch (err) {
           logger.error(

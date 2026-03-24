@@ -20,6 +20,7 @@ groups/telegram_main/*
 !groups/main/CLAUDE.md
 !groups/global/CLAUDE.md
 !groups/telegram_main/CLAUDE.md
+!groups/telegram_main/whatsapp-community-groups.json
 
 # Secrets
 *.keys.json

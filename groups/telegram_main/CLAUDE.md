@@ -64,7 +64,7 @@ Entries of each of the queues has the following format:
     "receivedAt": "2026-03-24T10:00:00.000Z",
     "message_id": "AAMkADcz...",
     "summary": "Concise summary of what the email is about",
-    "note": "Optiona note for actionable emails, e.g. why it's actionable or what the next step is"
+    "note": "Optional note for actionable emails, e.g. why it's actionable or what the next step is"
   }
 ]
 ```
@@ -79,7 +79,7 @@ When Steffen asks for a digest, read the relevant queue file, format a concise s
 
 After presenting the digest, clear the queue file (write `[]` back).
 
-### IPC file formats
+### IPC email file formats
 
 **Create a draft reply:**
 ```json
@@ -139,6 +139,41 @@ The whitelist lives at `/workspace/group/email-whitelist.json` — you can read 
 
 ---
 
+## WhatsApp Community Digests
+
+NanoClaw is connected to Steffen's WhatsApp as a linked device. It silently reads messages from configured community groups, marks them as read immediately, and buffers them for you to summarize.
+
+### Community groups config
+
+The config lives at `/workspace/group/whatsapp-community-groups.json` — you and Steffen can both edit it:
+```json
+[
+  { "jid": "12345@g.us", "name": "EO AI", "community": "EO" },
+  { "jid": "67890@g.us", "name": "EO Germany Southwest", "community": "EO" }
+]
+```
+
+To add a group, Steffen needs to give you the group name. You can look up the JID in the available groups snapshot at `/workspace/global/available-groups.json` (search by name).
+
+### Buffered messages
+
+Messages are buffered per community in `/workspace/group/whatsapp-community/{community}.json`:
+```json
+[
+  { "group": "EO AI", "sender": "John", "content": "...", "timestamp": "2026-03-24T17:00:00.000Z" }
+]
+```
+
+### Scheduled digest (18:00 daily)
+
+Every evening at 18:00 you receive an automated trigger to produce the digest. Read each community file, summarize key topics and highlights per community, and send Steffen a concise digest — one section per community. The buffers are cleared automatically after the trigger is sent.
+
+### On-demand digest
+
+When Steffen asks for a WhatsApp digest, read the community files and summarize them. **Do NOT clear the buffers** — the scheduled 18:00 digest does that.
+
+---
+
 ## Calendar Management
 
 Calendar events are refreshed automatically every 15 minutes (covering the next 28 days) and written to `/workspace/group/calendar-events.json`. When Steffen asks about his schedule, just read that file.
@@ -171,6 +206,8 @@ Times are in local timezone (Europe/Berlin). `status` is omitted when `busy` (th
 
 * No work events on holidays - expect holidays like easter and christmas to be family time.
 * In the time from april to june, there are often holidays on thursdays, opening up a "bridge day" on the fridays. Try to keep these fridays free of work events if possible, as the long weekends are often used for trips with friends and family.
+
+### IPC calendar file formats
 
 **Create an event:**
 ```json
