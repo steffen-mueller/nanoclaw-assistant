@@ -256,14 +256,18 @@ export class WhatsAppChannel implements Channel {
               if (content) {
                 bufferCommunityMessage(this.opts.mainFolder, communityEntry, {
                   group: communityEntry.name,
-                  sender: msg.pushName || (msg.key.participant || '').split('@')[0],
+                  sender:
+                    msg.pushName || (msg.key.participant || '').split('@')[0],
                   content,
                   timestamp,
                 });
                 // Mark as read immediately
                 await this.sock.readMessages([msg.key]);
                 logger.debug(
-                  { community: communityEntry.community, group: communityEntry.name },
+                  {
+                    community: communityEntry.community,
+                    group: communityEntry.name,
+                  },
                   'Community message buffered and marked read',
                 );
               }

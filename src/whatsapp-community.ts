@@ -43,9 +43,7 @@ function configPath(mainFolder: string): string {
 }
 
 /** Load community group config. Returns [] if file missing or unreadable. */
-export function loadCommunityGroups(
-  mainFolder: string,
-): CommunityGroupEntry[] {
+export function loadCommunityGroups(mainFolder: string): CommunityGroupEntry[] {
   try {
     const p = configPath(mainFolder);
     if (!fs.existsSync(p)) return [];
@@ -74,7 +72,9 @@ export function bufferCommunityMessage(
   let messages: CommunityMessage[] = [];
   try {
     if (fs.existsSync(file)) {
-      messages = JSON.parse(fs.readFileSync(file, 'utf-8')) as CommunityMessage[];
+      messages = JSON.parse(
+        fs.readFileSync(file, 'utf-8'),
+      ) as CommunityMessage[];
     }
   } catch {
     /* start fresh */

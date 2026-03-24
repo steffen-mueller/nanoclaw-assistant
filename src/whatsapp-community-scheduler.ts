@@ -89,7 +89,10 @@ function fireDigest(
     `Please read each community file, summarize the key topics and highlights ` +
     `per community, and send me a digest. Keep it concise — one section per community.`;
 
-  logger.info({ communities: pending, mainJid }, 'Firing community digest trigger');
+  logger.info(
+    { communities: pending, mainJid },
+    'Firing community digest trigger',
+  );
 
   onMessage(mainJid, {
     id: `community-digest-${Date.now()}`,
@@ -103,5 +106,8 @@ function fireDigest(
 
   // Clear buffers after injecting the trigger (not after Kim responds)
   clearAllCommunityBuffers(mainFolder);
-  logger.info({ communities: pending }, 'Community buffers cleared after digest trigger');
+  logger.info(
+    { communities: pending },
+    'Community buffers cleared after digest trigger',
+  );
 }

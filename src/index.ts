@@ -663,10 +663,7 @@ async function main(): Promise<void> {
   }
 
   // Start WhatsApp community digest scheduler
-  startCommunityDigestScheduler(
-    channelOpts.onMessage,
-    () => registeredGroups,
-  );
+  startCommunityDigestScheduler(channelOpts.onMessage, () => registeredGroups);
 
   queue.setProcessMessagesFn(processGroupMessages);
   recoverPendingMessages();
