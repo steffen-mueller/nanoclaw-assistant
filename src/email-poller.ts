@@ -13,6 +13,7 @@ import {
   isConfigured,
   listNewMessages,
   markRead,
+  archiveMessage,
   GraphMessage,
 } from './msgraph.js';
 import { OnInboundMessage } from './types.js';
@@ -40,9 +41,9 @@ function loadWhitelist(groupFolder: string): EmailWhitelist {
   return { contacts: [], newsletters: [] };
 }
 
-function isWhitelisted(from: string, whitelist: EmailWhitelist): boolean {
+function isNewsletter(from: string, whitelist: EmailWhitelist): boolean {
   const addr = from.toLowerCase();
-  for (const entry of [...whitelist.contacts, ...whitelist.newsletters]) {
+  for (const entry of whitelist.newsletters) {
     const pattern = entry.toLowerCase();
     if (pattern.startsWith('@')) {
       if (addr.endsWith(pattern)) return true;
@@ -112,11 +113,11 @@ function formatEmail(mailbox: string, msg: GraphMessage): string {
   ].join('\n');
 }
 
-function appendToDigestQueue(groupFolder: string, entry: object): void {
+function appendToNewsletterQueue(groupFolder: string, entry: object): void {
   const queueFile = path.join(
     GROUPS_DIR,
     groupFolder,
-    'email-digest-queue.json',
+    'email-newsletter-queue.json',
   );
   let queue: object[] = [];
   try {
@@ -148,8 +149,8 @@ async function poll(
       for (const msg of messages) {
         const fromAddr = msg.from?.emailAddress?.address || '';
         if (!fromAddr) continue;
-        if (isWhitelisted(fromAddr, whitelist)) {
-          appendToDigestQueue(targetFolder, {
+        if (isNewsletter(fromAddr, whitelist)) {
+          appendToNewsletterQueue(targetFolder, {
             mailbox,
             from: fromAddr,
             fromName: msg.from?.emailAddress?.name || fromAddr,
@@ -159,6 +160,7 @@ async function poll(
           });
           totalWhitelisted++;
           await markRead(mailbox, msg.id);
+          await archiveMessage(mailbox, msg.id);
         } else {
           const content = formatEmail(mailbox, msg);
           const timestamp = new Date().toISOString();
