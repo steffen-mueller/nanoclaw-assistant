@@ -453,7 +453,9 @@ export interface GraphEvent {
   attendees?: Array<{
     emailAddress: { address: string; name?: string };
     type: 'required' | 'optional';
+    status?: { response: string; time?: string };
   }>;
+  showAs?: string;
 }
 
 export async function listEvents(
@@ -465,7 +467,7 @@ export async function listEvents(
   const end = encodeURIComponent(to);
   const res = await graphRequest(
     'GET',
-    `/users/${encodeURIComponent(mailbox)}/calendarView?startDateTime=${start}&endDateTime=${end}&$select=id,subject,start,end,location,body,attendees&$orderby=start/dateTime&$top=50`,
+    `/users/${encodeURIComponent(mailbox)}/calendarView?startDateTime=${start}&endDateTime=${end}&$select=id,subject,start,end,location,body,attendees,showAs&$orderby=start/dateTime&$top=50`,
   );
   const data = res.data as { value?: GraphEvent[] };
   if (res.status !== 200) {

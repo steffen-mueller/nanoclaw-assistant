@@ -24,6 +24,7 @@
     "@azure/msal-node": "^5.1.1",
     "better-sqlite3": "^11.8.1",
     "cron-parser": "^5.5.0",
+    "date-holidays": "^3.26.11",
     "grammy": "^1.39.3",
     "openai": "^6.32.0",
     "pino": "^9.6.0",

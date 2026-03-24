@@ -15,7 +15,6 @@ import {
   createEvent,
   updateEvent,
   deleteEvent,
-  listEvents,
 } from './msgraph.js';
 import { RegisteredGroup } from './types.js';
 
@@ -553,14 +552,7 @@ export async function processTaskIpc(
     case 'calendar_event':
       if (data.mailbox && data.action) {
         try {
-          if (data.action === 'list' && data.start && data.end) {
-            const events = await listEvents(data.mailbox, data.start, data.end);
-            logger.info(
-              { mailbox: data.mailbox, count: events.length, sourceGroup },
-              'Calendar events listed via IPC',
-            );
-            // Events are logged; Kim reads them via the next poll or agent output
-          } else if (
+          if (
             (data.action === 'create' || data.action === 'update') &&
             data.subject &&
             data.start &&

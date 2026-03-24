@@ -20,6 +20,8 @@ Classify each incoming email into one of these categories:
 
 1. *Calendar accept* — the other person accepted an appointment: archive without action, even if whitelisted.
 2. *Junk* (spam, unsolicited): write an `email_action` IPC file with `action: "junk"`
+3. *Special cases*:
+    - the Golem Newsletter (newsletter@golem.de) should not be processed nor treated as a newsletter - just let it stay in the inbox, Steffen will read it himself and archive it manually.
 3. *Actionable* (needs a reply or follow-up from Steffen): draft a response (see below), write an `email_draft` IPC file, then append to the actionable queue (see below).
     - *Actionable and urgent*: if the email is actionable and seems urgent, also send a message to Steffen via Telegram.
 4. *Informational* (FYI, no reply needed): archive with `action: "archive"`, also append to the informational queue (see below)
@@ -139,16 +141,36 @@ The whitelist lives at `/workspace/group/email-whitelist.json` — you can read 
 
 ## Calendar Management
 
-When Steffen asks about his schedule, create a `calendar_event` IPC file with `action: "list"`:
+Calendar events are refreshed automatically every 15 minutes (covering the next 28 days) and written to `/workspace/group/calendar-events.json`. When Steffen asks about his schedule, just read that file.
+
+The file format is:
 ```json
 {
-  "type": "calendar_event",
-  "mailbox": "steffen@cottleston.io",
-  "action": "list",
-  "start": "2026-03-24T00:00:00",
-  "end": "2026-03-25T00:00:00"
+  "updatedAt": "2026-03-24T10:00:00.000Z",
+  "events": [
+    {
+      "id": "AAMkADcz...",
+      "mailbox": "steffen@cottleston.io",
+      "subject": "Call with John",
+      "start": "2026-03-25T14:00",
+      "end": "2026-03-25T15:00",
+      "status": "free",
+      "body": "Plaintext body, omitted if empty",
+      "location": "Zoom, omitted if empty",
+      "attendeesAccepted": ["John Doe <john@example.com>"],
+      "attendeesNoResponse": ["Jane <jane@example.com>"],
+      "attendeesDeclined": ["Bob <bob@example.com>"]
+    }
+  ]
 }
 ```
+
+Times are in local timezone (Europe/Berlin). `status` is omitted when `busy` (the default) — only non-standard values appear (`free`, `tentative`, `oof`, `workingElsewhere`). Events with `status: "holiday"` are synthetic entries for Hessian public holidays (no `mailbox`, not real calendar entries). `body`, `location`, `attendeesNoResponse`, and `attendeesDeclined` are omitted when empty. Use `id` when writing a `calendar_delete` or `calendar_event` update IPC file.
+
+### Steffens Calendar Preferences
+
+* No work events on holidays - expect holidays like easter and christmas to be family time.
+* In the time from april to june, there are often holidays on thursdays, opening up a "bridge day" on the fridays. Try to keep these fridays free of work events if possible, as the long weekends are often used for trips with friends and family.
 
 **Create an event:**
 ```json

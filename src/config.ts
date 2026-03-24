@@ -71,6 +71,21 @@ export const TRIGGER_PATTERN = new RegExp(
   'i',
 );
 
+// Number of days ahead to fetch calendar events (used by the email poller)
+export const CALENDAR_LOOKAHEAD_DAYS = parseInt(
+  process.env.CALENDAR_LOOKAHEAD_DAYS || '28',
+  10,
+);
+
+// Timezone used when formatting calendar event times in calendar-events.json
+export const CALENDAR_TIMEZONE =
+  process.env.CALENDAR_TIMEZONE || 'Europe/Berlin';
+
+// Public holiday locale for calendar-events.json (date-holidays format: "CC.STATE")
+// Examples: "DE.HE" (Hesse), "DE.BE" (Berlin), "DE" (federal only)
+export const CALENDAR_HOLIDAYS_LOCALE =
+  process.env.CALENDAR_HOLIDAYS_LOCALE || 'DE.HE';
+
 // Timezone for scheduled tasks (cron expressions, etc.)
 // Uses system timezone by default
 export const TIMEZONE =

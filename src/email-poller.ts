@@ -8,7 +8,9 @@ import path from 'path';
 
 import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
-import { GROUPS_DIR } from './config.js';
+import Holidays from 'date-holidays';
+
+import { CALENDAR_HOLIDAYS_LOCALE, CALENDAR_LOOKAHEAD_DAYS, CALENDAR_TIMEZONE, GROUPS_DIR } from './config.js';
 import {
   isConfigured,
   listNewMessages,
@@ -16,6 +18,7 @@ import {
   archiveMessage,
   getThreadMessages,
   getRecentSenderMessages,
+  listEvents,
   GraphMessage,
 } from './msgraph.js';
 import { OnInboundMessage } from './types.js';
@@ -243,6 +246,148 @@ async function poll(
       { delivered: totalDelivered, whitelisted: totalWhitelisted },
       'Email poll complete',
     );
+  }
+
+  // Refresh calendar events for all mailboxes
+  await refreshCalendarEvents(mailboxes, targetFolder);
+}
+
+function toLocalDateTime(utcStr: string, tz: string): string {
+  const date = new Date(utcStr.endsWith('Z') ? utcStr : utcStr + 'Z');
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
+}
+
+function formatAttendee(a: {
+  emailAddress: { address: string; name?: string };
+}): string {
+  const name = a.emailAddress.name;
+  const addr = a.emailAddress.address;
+  return name ? `${name} <${addr}>` : addr;
+}
+
+interface CalendarEventRecord {
+  id: string;
+  mailbox: string;
+  subject: string;
+  start: string;
+  end: string;
+  status?: string;
+  body?: string;
+  location?: string;
+  attendeesAccepted?: string[];
+  attendeesNoResponse?: string[];
+  attendeesDeclined?: string[];
+}
+
+async function refreshCalendarEvents(
+  mailboxes: string[],
+  targetFolder: string,
+): Promise<void> {
+  if (mailboxes.length === 0) return;
+
+  const now = new Date();
+  const end = new Date(
+    now.getTime() + CALENDAR_LOOKAHEAD_DAYS * 24 * 60 * 60 * 1000,
+  );
+  const start = now.toISOString();
+  const endStr = end.toISOString();
+
+  const allEvents: CalendarEventRecord[] = [];
+  for (const mailbox of mailboxes) {
+    try {
+      const events = await listEvents(mailbox, start, endStr);
+      for (const event of events) {
+        const record: CalendarEventRecord = {
+          id: event.id ?? '',
+          mailbox,
+          subject: event.subject,
+          start: toLocalDateTime(event.start.dateTime, CALENDAR_TIMEZONE),
+          end: toLocalDateTime(event.end.dateTime, CALENDAR_TIMEZONE),
+        };
+
+        if (event.showAs && event.showAs !== 'busy') record.status = event.showAs;
+
+        const bodyText = event.body?.content
+          ? stripHtml(event.body.content).trim()
+          : '';
+        if (bodyText) record.body = bodyText;
+
+        const locationName = event.location?.displayName?.trim();
+        if (locationName) record.location = locationName;
+
+        if (event.attendees?.length) {
+          const accepted: string[] = [];
+          const noResponse: string[] = [];
+          const declined: string[] = [];
+          for (const a of event.attendees) {
+            const formatted = formatAttendee(a);
+            const response = a.status?.response ?? 'notResponded';
+            if (response === 'accepted' || response === 'organizer') {
+              accepted.push(formatted);
+            } else if (response === 'declined') {
+              declined.push(formatted);
+            } else {
+              noResponse.push(formatted);
+            }
+          }
+          if (accepted.length) record.attendeesAccepted = accepted;
+          if (noResponse.length) record.attendeesNoResponse = noResponse;
+          if (declined.length) record.attendeesDeclined = declined;
+        }
+
+        allEvents.push(record);
+      }
+    } catch (err) {
+      logger.error({ mailbox, err }, 'Calendar refresh failed for mailbox');
+    }
+  }
+
+  // Inject public holidays as synthetic events
+  const [country, state, region] = CALENDAR_HOLIDAYS_LOCALE.split('.');
+  const hd = new Holidays(country, state, region);
+  const years = new Set([now.getFullYear(), end.getFullYear()]);
+  for (const year of years) {
+    for (const holiday of hd.getHolidays(year)) {
+      if (holiday.type !== 'public') continue;
+      const holidayDate = new Date(holiday.start);
+      if (holidayDate < now || holidayDate > end) continue;
+      const dateStr = holiday.date.slice(0, 10); // "YYYY-MM-DD"
+      allEvents.push({
+        id: `holiday-${dateStr}-${holiday.rule}`,
+        mailbox: '',
+        subject: holiday.name,
+        start: `${dateStr}T00:00`,
+        end: `${dateStr}T23:59`,
+        status: 'holiday',
+      });
+    }
+  }
+
+  // Sort all events (real + holidays) by start time
+  allEvents.sort((a, b) => a.start.localeCompare(b.start));
+
+  const resultFile = path.join(GROUPS_DIR, targetFolder, 'calendar-events.json');
+  try {
+    fs.writeFileSync(
+      resultFile,
+      JSON.stringify({ updatedAt: now.toISOString(), events: allEvents }, null, 2),
+    );
+    logger.debug(
+      { count: allEvents.length, lookaheadDays: CALENDAR_LOOKAHEAD_DAYS },
+      'Calendar events refreshed',
+    );
+  } catch (err) {
+    logger.error({ err }, 'Failed to write calendar-events.json');
   }
 }
 
