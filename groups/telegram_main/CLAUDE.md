@@ -29,7 +29,8 @@ Classify each incoming email into one of these categories:
 
 1. *Calendar accept* — the other person accepted an appointment: archive without action, even if whitelisted.
 2. *Junk* (spam, unsolicited): write an `email_action` IPC file with `action: "junk"`
-3. *Special cases*:
+3. *Trash* (automated notifications, LinkedIn, low-value alerts — not spam but not worth keeping): write an `email_action` IPC file with `action: "trash"`
+4. *Special cases*:
     - the Golem Newsletter (newsletter@golem.de) should not be processed nor treated as a newsletter - just let it stay in the inbox, Steffen will read it himself and archive it manually.
 3. *Actionable* (needs a reply or follow-up from Steffen): draft a response (see below), write an `email_draft` IPC file, then append to the actionable queue (see below).
     - *Actionable and urgent*: if the email is actionable and seems urgent, also send a message to Steffen via Telegram.
@@ -102,26 +103,16 @@ After presenting the digest, clear the queue file (write `[]` back).
 }
 ```
 
-**Move to junk:**
-```json
-{
-  "type": "email_action",
-  "mailbox": "steffen@cottleston.io",
-  "message_id": "AAMkADcz...",
-  "action": "junk",
-  "from": "sender@example.com",
-  "from_name": "Sender Name",
-  "subject": "Email Subject"
-}
-```
+**Email actions (junk/archive/delete):**
 
-**Archive:**
+For "action", you can use "junk", "archive", or "trash".
+
 ```json
 {
   "type": "email_action",
   "mailbox": "steffen@cottleston.io",
   "message_id": "AAMkADcz...",
-  "action": "archive",
+  "action": "junk", // or "archive" or "trash"
   "from": "sender@example.com",
   "from_name": "Sender Name",
   "subject": "Email Subject"

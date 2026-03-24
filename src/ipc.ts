@@ -12,6 +12,7 @@ import {
   archiveMessage,
   createDraft,
   moveToJunk,
+  trashMessage,
   createEvent,
   updateEvent,
   deleteEvent,
@@ -539,6 +540,19 @@ export async function processTaskIpc(
                 sourceGroup,
               },
               'Email archived via IPC',
+            );
+          } else if (data.action === 'trash') {
+            await trashMessage(data.mailbox, data.message_id);
+            logger.info(
+              {
+                mailbox: data.mailbox,
+                messageId: data.message_id,
+                from: data.from,
+                fromName: data.from_name,
+                subject: data.subject,
+                sourceGroup,
+              },
+              'Email trashed via IPC',
             );
           } else {
             logger.warn({ action: data.action }, 'Unknown email_action');

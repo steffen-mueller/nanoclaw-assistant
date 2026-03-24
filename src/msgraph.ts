@@ -354,6 +354,23 @@ export async function moveToJunk(
   }
 }
 
+export async function trashMessage(
+  mailbox: string,
+  messageId: string,
+): Promise<void> {
+  const res = await graphRequest(
+    'POST',
+    `/users/${encodeURIComponent(mailbox)}/messages/${messageId}/move`,
+    { destinationId: 'deleteditems' },
+  );
+  if (res.status !== 201) {
+    logger.error(
+      { mailbox, messageId, status: res.status },
+      'trashMessage failed',
+    );
+  }
+}
+
 export async function archiveMessage(
   mailbox: string,
   messageId: string,
