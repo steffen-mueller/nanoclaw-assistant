@@ -32,6 +32,7 @@ Classify each incoming email into one of these categories:
 3. *Trash* (automated notifications, LinkedIn, low-value alerts — not spam but not worth keeping): write an `email_action` IPC file with `action: "trash"`
 4. *Special cases*:
     - the Golem Newsletter (newsletter@golem.de) should not be processed nor treated as a newsletter - just let it stay in the inbox, Steffen will read it himself and archive it manually.
+    - the UBS bank sends a lot of "banking documents are available in your digital banking" emails. Delete them right away.
 3. *Actionable* (needs a reply or follow-up from Steffen): draft a response (see below), write an `email_draft` IPC file, then append to the actionable queue (see below).
     - *Actionable and urgent*: if the email is actionable and seems urgent, also send a message to Steffen via Telegram.
 4. *Informational* (FYI, no reply needed): archive with `action: "archive"`, also append to the informational queue (see below)
@@ -136,6 +137,26 @@ The whitelist lives at `/workspace/group/email-whitelist.json` — you can read 
 - `newsletters` — same format; these are intercepted by the poller and never reach you
 - When Steffen asks you to whitelist someone as a newsletter ("add Substack to newsletters"), read the file, add to `newsletters`, write it back
 - When Steffen asks to whitelist a contact, add to `contacts`
+
+---
+
+## Grocery Shopping
+
+The family uses an Amazon Alexa shopping list. Every morning at 7:00 you check the list and order from Tegut via Amazon if there are items. You can also be asked on-demand at any time.
+
+Follow the `amazon-shopping` container skill for the full step-by-step workflow.
+
+**Key rules:**
+- Credentials are in `/workspace/group/amazon-credentials.json` (email, password, totp_seed)
+- Session state is saved/loaded from `/workspace/group/amazon-session.json`
+- Only order items found in the **past Tegut purchases** list — these are the products Steffen prefers
+- Items NOT in past purchases → ask Steffen before doing anything
+- Out-of-stock items → skip, no substitutions, report to Steffen
+- Preferred delivery: **same day, 18:00 or later**. If no same-day slot → ask Steffen
+- **Always confirm** with Steffen before placing the order (show items, slot, total)
+- After Steffen approves → complete checkout
+
+**First-time setup:** On your first run, create a daily 7 AM scheduled task via IPC (`schedule_task`, cron `0 7 * * *`, taskId `grocery-check-daily`, context_mode `group`). Check first whether the task already exists before creating it.
 
 ---
 
