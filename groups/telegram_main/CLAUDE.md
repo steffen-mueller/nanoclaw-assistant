@@ -30,12 +30,13 @@ Classify each incoming email into one of these categories:
 When drafting a reply for an actionable email, follow these steps:
 
 1. Summarize the email content and identify the key points that need to be addressed.
+2. Write only your reply content as HTML — do NOT include the signature or the quoted original. Those are automatically preserved from Outlook's draft template.
 
 For the formatting:
 
-* Write HTML emails like Outlook would create them.
-* No emojis, no emdashs - the email should look like Steffen wrote it himself.
-* Use Steffens Outlook signature at the end of the email (you can find it in the last emails)
+* Write HTML like Outlook would — `<p>` tags for paragraphs, no `<html>`/`<body>` wrapper.
+* No emojis, no em-dashes — the email should look like Steffen wrote it himself.
+* For new emails (no `reply_to_message_id`), include Steffen's signature at the end. You can find it in recent sent messages in `<email_thread_history>`.
 
 ### Digest Queues
 

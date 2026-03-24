@@ -267,7 +267,10 @@ export async function createDraft(
   if (replyToMessageId) {
     endpoint = `/users/${encodeURIComponent(mailbox)}/messages/${replyToMessageId}/createReply`;
     const res = await graphRequest('POST', endpoint, {});
-    const draft = res.data as { id?: string };
+    const draft = res.data as {
+      id?: string;
+      body?: { content: string; contentType: string };
+    };
     if (!draft.id) {
       logger.error(
         { mailbox, replyToMessageId, status: res.status },
@@ -275,11 +278,16 @@ export async function createDraft(
       );
       return null;
     }
-    // Update the draft body
+    // Inject Kim's reply HTML at the top of the existing draft body, which
+    // already contains Outlook's default signature and the quoted original.
+    const existing = draft.body?.content || '';
+    const combined = existing.match(/<body[^>]*>/i)
+      ? existing.replace(/<body[^>]*>/i, (tag) => tag + body + '<br><br>')
+      : body + '<br><br>' + existing;
     const updateRes = await graphRequest(
       'PATCH',
       `/users/${encodeURIComponent(mailbox)}/messages/${draft.id}`,
-      { body: { contentType: 'Text', content: body } },
+      { body: { contentType: 'HTML', content: combined } },
     );
     if (updateRes.status !== 200) {
       logger.error({ mailbox, draftId: draft.id }, 'Draft body update failed');
@@ -294,7 +302,7 @@ export async function createDraft(
   endpoint = `/users/${encodeURIComponent(mailbox)}/messages`;
   payload = {
     subject,
-    body: { contentType: 'Text', content: body },
+    body: { contentType: 'HTML', content: body },
     toRecipients: [{ emailAddress: { address: to } }],
     isDraft: true,
   };
