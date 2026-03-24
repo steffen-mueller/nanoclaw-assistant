@@ -82,7 +82,10 @@ After presenting the digest, clear the queue file (write `[]` back).
   "type": "email_action",
   "mailbox": "steffen@cottleston.io",
   "message_id": "AAMkADcz...",
-  "action": "junk"
+  "action": "junk",
+  "from": "sender@example.com",
+  "from_name": "Sender Name",
+  "subject": "Email Subject"
 }
 ```
 
@@ -92,7 +95,10 @@ After presenting the digest, clear the queue file (write `[]` back).
   "type": "email_action",
   "mailbox": "steffen@cottleston.io",
   "message_id": "AAMkADcz...",
-  "action": "archive"
+  "action": "archive",
+  "from": "sender@example.com",
+  "from_name": "Sender Name",
+  "subject": "Email Subject"
 }
 ```
 

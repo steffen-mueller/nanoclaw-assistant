@@ -190,6 +190,8 @@ export async function processTaskIpc(
     // For email_action
     message_id?: string;
     action?: string;
+    from?: string;
+    from_name?: string;
     // For calendar_event
     start?: string;
     end?: string;
@@ -490,7 +492,7 @@ export async function processTaskIpc(
             data.reply_to_message_id,
           );
           logger.info(
-            { mailbox: data.mailbox, draftId, sourceGroup },
+            { mailbox: data.mailbox, to: data.to, subject: data.subject, draftId, sourceGroup },
             'Email draft created via IPC',
           );
         } catch (err) {
@@ -513,6 +515,9 @@ export async function processTaskIpc(
               {
                 mailbox: data.mailbox,
                 messageId: data.message_id,
+                from: data.from,
+                fromName: data.from_name,
+                subject: data.subject,
                 sourceGroup,
               },
               'Email moved to junk via IPC',
@@ -523,6 +528,9 @@ export async function processTaskIpc(
               {
                 mailbox: data.mailbox,
                 messageId: data.message_id,
+                from: data.from,
+                fromName: data.from_name,
+                subject: data.subject,
                 sourceGroup,
               },
               'Email archived via IPC',
