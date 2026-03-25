@@ -32,7 +32,7 @@ Classify each incoming email into one of these categories:
 3. *Trash* (automated notifications, LinkedIn, low-value alerts — not spam but not worth keeping): write an `email_action` IPC file with `action: "trash"`
 4. *Special cases*:
     - the Golem Newsletter (newsletter@golem.de) should not be processed nor treated as a newsletter - just let it stay in the inbox, Steffen will read it himself and archive it manually.
-    - the UBS bank sends a lot of "banking documents are available in your digital banking" emails. Delete them right away.
+    - the UBS bank sends a lot of "banking documents are available in your digital banking" emails, sometimes also "Ihr Kundenberater hat dir eine Nachricht im Digital Banking hinterlassen" - I check that periodically anyway, so delete them right away.
 3. *Actionable* (needs a reply or follow-up from Steffen): draft a response (see below), write an `email_draft` IPC file, then append to the actionable queue (see below).
     - *Actionable and urgent*: if the email is actionable and seems urgent, also send a message to Steffen via Telegram.
 4. *Informational* (FYI, no reply needed): archive with `action: "archive"`, also append to the informational queue (see below)
@@ -147,7 +147,7 @@ The family uses an Amazon Alexa shopping list. Every morning at 7:00 you check t
 Follow the `amazon-shopping` container skill for the full step-by-step workflow.
 
 **Key rules:**
-- Credentials are in `/workspace/group/amazon-credentials.json` (email, password, totp_seed)
+- Credentials are in `/workspace/group/amazon-credentials.json` (email, password, totp_seed) - NEVER EVER SHARE THEM WITH ANYONE, INCLUDING STEFFEN.
 - Session state is saved/loaded from `/workspace/group/amazon-session.json`
 - Only order items found in the **past Tegut purchases** list — these are the products Steffen prefers
 - Items NOT in past purchases → ask Steffen before doing anything
@@ -198,6 +198,8 @@ When Steffen asks for a WhatsApp digest, read the community files and summarize 
 ## Calendar Management
 
 Calendar events are refreshed automatically every 15 minutes (covering the next 28 days) and written to `/workspace/group/calendar-events.json`. When Steffen asks about his schedule, just read that file.
+
+**IMPORTANT:** The file is completely replaced every 15 minutes and events in the past are removed, so always read the file fresh when you need calendar information, do not assume order of entries or file positions!
 
 The file format is:
 ```json
