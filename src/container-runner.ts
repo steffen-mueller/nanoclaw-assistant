@@ -48,6 +48,51 @@ export interface ContainerOutput {
   result: string | null;
   newSessionId?: string;
   error?: string;
+  promptPreview?: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens: number;
+    cache_read_input_tokens: number;
+  };
+  modelUsage?: Array<{
+    model: string;
+    costUSD: number;
+    inputTokens: number;
+    outputTokens: number;
+    contextWindow: number;
+  }>;
+  totalCostUsd?: number;
+  durationMs?: number;
+}
+
+const LOGS_DIR = path.join(process.cwd(), 'logs');
+const TOKEN_USAGE_LOG = path.join(LOGS_DIR, 'token-usage.jsonl');
+
+function logTokenUsage(
+  group: RegisteredGroup,
+  chatJid: string,
+  sessionId: string | undefined,
+  output: ContainerOutput,
+): void {
+  if (!output.usage) return;
+  try {
+    fs.mkdirSync(LOGS_DIR, { recursive: true });
+    const entry = JSON.stringify({
+      ts: new Date().toISOString(),
+      group: group.name,
+      chatJid,
+      session: output.newSessionId ?? sessionId,
+      promptPreview: output.promptPreview,
+      usage: output.usage,
+      modelUsage: output.modelUsage,
+      totalCostUsd: output.totalCostUsd,
+      durationMs: output.durationMs,
+    });
+    fs.appendFileSync(TOKEN_USAGE_LOG, entry + '\n');
+  } catch (err) {
+    logger.warn({ error: err }, 'Failed to write token usage log');
+  }
 }
 
 interface VolumeMount {
@@ -362,6 +407,7 @@ export async function runContainerAgent(
             if (parsed.newSessionId) {
               newSessionId = parsed.newSessionId;
             }
+            logTokenUsage(group, input.chatJid, input.sessionId, parsed);
             hadStreamingOutput = true;
             // Activity detected — reset the hard timeout
             resetTimeout();

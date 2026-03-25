@@ -34,6 +34,22 @@ interface ContainerOutput {
   result: string | null;
   newSessionId?: string;
   error?: string;
+  promptPreview?: string;
+  usage?: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_creation_input_tokens: number;
+    cache_read_input_tokens: number;
+  };
+  modelUsage?: Array<{
+    model: string;
+    costUSD: number;
+    inputTokens: number;
+    outputTokens: number;
+    contextWindow: number;
+  }>;
+  totalCostUsd?: number;
+  durationMs?: number;
 }
 
 interface SessionEntry {
@@ -450,11 +466,21 @@ async function runQuery(
     if (message.type === 'result') {
       resultCount++;
       const textResult = 'result' in message ? (message as { result?: string }).result : null;
-      log(`Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}`);
+      const msg = message as any;
+      const usage = msg.usage ?? null;
+      const modelUsage = msg.modelUsage ?? null;
+      const totalCostUsd = msg.total_cost_usd ?? null;
+      const durationMs = msg.duration_ms ?? null;
+      log(`Result #${resultCount}: subtype=${message.subtype}${textResult ? ` text=${textResult.slice(0, 200)}` : ''}${totalCostUsd != null ? ` cost=$${totalCostUsd.toFixed(4)}` : ''}`);
       writeOutput({
         status: 'success',
         result: textResult || null,
-        newSessionId
+        newSessionId,
+        promptPreview: prompt.slice(0, 300),
+        usage,
+        modelUsage,
+        totalCostUsd,
+        durationMs,
       });
     }
   }
