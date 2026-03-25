@@ -228,6 +228,8 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
         await channel.sendMessage(chatJid, text);
         outputSentToUser = true;
       }
+      // Stop typing indicator as soon as a response is sent — don't wait for container exit
+      await channel.setTyping?.(chatJid, false);
       // Only reset idle timer on actual results, not session-update markers (result: null)
       resetIdleTimer();
     }
@@ -238,6 +240,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
 
     if (result.status === 'error') {
       hadError = true;
+      await channel.setTyping?.(chatJid, false);
     }
   });
 
