@@ -13,9 +13,14 @@
 import { createServer, Server } from 'http';
 import { request as httpsRequest } from 'https';
 import { request as httpRequest, RequestOptions } from 'http';
+import { spawn, ChildProcess } from 'child_process';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import { readEnvFile } from './env.js';
 import { logger } from './logger.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export type AuthMode = 'api-key' | 'oauth';
 
@@ -122,4 +127,66 @@ export function startCredentialProxy(
 export function detectAuthMode(): AuthMode {
   const secrets = readEnvFile(['ANTHROPIC_API_KEY']);
   return secrets.ANTHROPIC_API_KEY ? 'api-key' : 'oauth';
+}
+
+/**
+ * Start the Jira MCP bridge: runs mcp-atlassian (stdio) wrapped by supergateway
+ * (streamable HTTP) on the given port. Credentials come from .env and are never
+ * passed to containers — only the HTTP URL is exposed to them.
+ *
+ * Returns the child process, or null if Jira is not configured.
+ */
+export function startJiraMcpBridge(port: number): ChildProcess | null {
+  const secrets = readEnvFile([
+    'ATLASSIAN_BASE_URL',
+    'ATLASSIAN_EMAIL',
+    'ATLASSIAN_API_TOKEN',
+  ]);
+
+  if (!secrets.ATLASSIAN_BASE_URL || !secrets.ATLASSIAN_EMAIL || !secrets.ATLASSIAN_API_TOKEN) {
+    logger.info('Jira MCP bridge not started: ATLASSIAN_* env vars not set');
+    return null;
+  }
+
+  const projectRoot = path.resolve(__dirname, '..');
+  const mcpAtlassianBin = path.join(
+    projectRoot,
+    'node_modules/.bin/mcp-atlassian',
+  );
+  const supergatewayBin = path.join(
+    projectRoot,
+    'node_modules/.bin/supergateway',
+  );
+
+  const proc = spawn(
+    supergatewayBin,
+    [
+      '--stdio', mcpAtlassianBin,
+      '--outputTransport', 'streamableHttp',
+      '--streamableHttpPath', '/mcp',
+      '--port', String(port),
+    ],
+    {
+      env: {
+        ...process.env,
+        ATLASSIAN_BASE_URL: secrets.ATLASSIAN_BASE_URL,
+        ATLASSIAN_EMAIL: secrets.ATLASSIAN_EMAIL,
+        ATLASSIAN_API_TOKEN: secrets.ATLASSIAN_API_TOKEN,
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+
+  proc.stdout?.on('data', (d: Buffer) => {
+    logger.debug({ bridge: 'jira-mcp' }, d.toString().trim());
+  });
+  proc.stderr?.on('data', (d: Buffer) => {
+    logger.debug({ bridge: 'jira-mcp' }, d.toString().trim());
+  });
+  proc.on('exit', (code) => {
+    logger.warn({ port, code }, 'Jira MCP bridge exited');
+  });
+
+  logger.info({ port }, 'Jira MCP bridge started');
+  return proc;
 }

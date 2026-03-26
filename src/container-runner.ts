@@ -272,6 +272,12 @@ function buildContainerArgs(
     `ANTHROPIC_BASE_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT}`,
   );
 
+  // Jira MCP bridge URL (host-side bridge, no credentials in container env)
+  args.push(
+    '-e',
+    `JIRA_MCP_URL=http://${CONTAINER_HOST_GATEWAY}:${CREDENTIAL_PROXY_PORT + 1}/mcp`,
+  );
+
   // Mirror the host's auth method with a placeholder value.
   // API key mode: SDK sends x-api-key, proxy replaces with real key.
   // OAuth mode:   SDK exchanges placeholder token for temp API key,

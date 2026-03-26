@@ -423,7 +423,8 @@ async function runQuery(
         'TeamCreate', 'TeamDelete', 'SendMessage',
         'TodoWrite', 'ToolSearch', 'Skill',
         'NotebookEdit',
-        'mcp__nanoclaw__*'
+        'mcp__nanoclaw__*',
+        'mcp__jira__*',
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -439,6 +440,13 @@ async function runQuery(
             NANOCLAW_IS_MAIN: containerInput.isMain ? '1' : '0',
           },
         },
+        // Jira MCP — host-side bridge, credentials never enter the container.
+        ...(process.env.JIRA_MCP_URL ? {
+          jira: {
+            type: 'http' as const,
+            url: process.env.JIRA_MCP_URL,
+          },
+        } : {}),
       },
       hooks: {
         PreCompact: [{ hooks: [createPreCompactHook(containerInput.assistantName)] }],

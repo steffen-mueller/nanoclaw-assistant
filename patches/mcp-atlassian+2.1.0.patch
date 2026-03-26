@@ -1,0 +1,104 @@
+diff --git a/node_modules/mcp-atlassian/dist/index.js b/node_modules/mcp-atlassian/dist/index.js
+index 77a0684..68a2e1f 100755
+--- a/node_modules/mcp-atlassian/dist/index.js
++++ b/node_modules/mcp-atlassian/dist/index.js
+@@ -132,6 +132,7 @@ class AtlassianMCPServer {
+             { name: 'list_issues_for_user_role', handler: 'listUserJiraIssues' },
+             { name: 'get_user_activity_history', handler: 'getUserJiraActivity' },
+             { name: 'get_user_time_tracking', handler: 'getUserJiraWorklog' },
++            { name: 'transition_jira_issue', handler: 'transitionJiraIssue' },
+         ];
+         jiraToolsMap.forEach((tool) => {
+             this.toolRegistry.register({
+diff --git a/node_modules/mcp-atlassian/dist/jira/handlers.js b/node_modules/mcp-atlassian/dist/jira/handlers.js
+index 520d27b..aa5a5fa 100644
+--- a/node_modules/mcp-atlassian/dist/jira/handlers.js
++++ b/node_modules/mcp-atlassian/dist/jira/handlers.js
+@@ -74,7 +74,7 @@ export class JiraHandlers {
+             if (!paginationValidation.isValid) {
+                 return createValidationError(paginationValidation.errors, 'searchJiraIssues', 'jira');
+             }
+-            const response = await this.client.get('/rest/api/3/search', {
++            const response = await this.client.get('/rest/api/3/search/jql', {
+                 params: {
+                     jql: jqlValidation.sanitizedValue,
+                     maxResults: paginationValidation.sanitizedValue.maxResults,
+@@ -82,6 +82,10 @@ export class JiraHandlers {
+                     fields,
+                 },
+             });
++            if (!response.data.issues) {
++                const errMsg = response.data.errorMessages?.[0] || response.data.message || 'Unexpected Jira API response';
++                throw new Error(errMsg);
++            }
+             const issues = response.data.issues.map((issue) => ({
+                 id: issue.id,
+                 key: issue.key,
+@@ -1222,5 +1226,37 @@ export class JiraHandlers {
+             });
+         }
+     }
++    async transitionJiraIssue(args) {
++        try {
++            const { issueKey, transitionName } = args;
++            const issueKeyValidation = validateString(issueKey, 'issueKey', { required: true, maxLength: 50 });
++            if (!issueKeyValidation.isValid) {
++                return createValidationError(issueKeyValidation.errors, 'transitionJiraIssue', 'jira');
++            }
++            const nameValidation = validateString(transitionName, 'transitionName', { required: true, maxLength: 100 });
++            if (!nameValidation.isValid) {
++                return createValidationError(nameValidation.errors, 'transitionJiraIssue', 'jira');
++            }
++            const transitionsResponse = await this.client.get(`/rest/api/3/issue/${issueKeyValidation.sanitizedValue}/transitions`);
++            const transitions = transitionsResponse.data.transitions ?? [];
++            const match = transitions.find((t) => t.name.toLowerCase() === nameValidation.sanitizedValue.toLowerCase());
++            if (!match) {
++                const available = transitions.map((t) => t.name).join(', ');
++                throw new Error(`Transition "${transitionName}" not found. Available: ${available}`);
++            }
++            await this.client.post(`/rest/api/3/issue/${issueKeyValidation.sanitizedValue}/transitions`, {
++                transition: { id: match.id },
++            });
++            return {
++                content: [{ type: 'text', text: JSON.stringify({ success: true, issueKey, transition: match.name }) }],
++            };
++        }
++        catch (error) {
++            return {
++                content: [{ type: 'text', text: formatApiError(error) }],
++                isError: true,
++            };
++        }
++    }
+ }
+ //# sourceMappingURL=handlers.js.map
+\ No newline at end of file
+diff --git a/node_modules/mcp-atlassian/dist/jira/tools.js b/node_modules/mcp-atlassian/dist/jira/tools.js
+index dafeaff..5c2df7c 100644
+--- a/node_modules/mcp-atlassian/dist/jira/tools.js
++++ b/node_modules/mcp-atlassian/dist/jira/tools.js
+@@ -471,5 +471,23 @@ export const jiraTools = [
+             },
+         },
+     },
++    {
++        name: 'transition_jira_issue',
++        description: 'Transition a Jira issue to a new status by name (e.g. "Done", "In Progress"). Looks up the matching transition automatically.',
++        inputSchema: {
++            type: 'object',
++            properties: {
++                issueKey: {
++                    type: 'string',
++                    description: 'The Jira issue key (e.g. "PROJ-123").',
++                },
++                transitionName: {
++                    type: 'string',
++                    description: 'The name of the target status/transition (e.g. "Done", "In Progress", "In Review"). Case-insensitive.',
++                },
++            },
++            required: ['issueKey', 'transitionName'],
++        },
++    },
+ ];
+ //# sourceMappingURL=tools.js.map
+\ No newline at end of file
