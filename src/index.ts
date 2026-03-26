@@ -9,7 +9,10 @@ import {
   TIMEZONE,
   TRIGGER_PATTERN,
 } from './config.js';
-import { startCredentialProxy, startJiraMcpBridge } from './credential-proxy.js';
+import {
+  startCredentialProxy,
+  startJiraMcpBridge,
+} from './credential-proxy.js';
 import './channels/index.js';
 import {
   getChannelFactory,

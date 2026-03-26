@@ -143,7 +143,11 @@ export function startJiraMcpBridge(port: number): ChildProcess | null {
     'ATLASSIAN_API_TOKEN',
   ]);
 
-  if (!secrets.ATLASSIAN_BASE_URL || !secrets.ATLASSIAN_EMAIL || !secrets.ATLASSIAN_API_TOKEN) {
+  if (
+    !secrets.ATLASSIAN_BASE_URL ||
+    !secrets.ATLASSIAN_EMAIL ||
+    !secrets.ATLASSIAN_API_TOKEN
+  ) {
     logger.info('Jira MCP bridge not started: ATLASSIAN_* env vars not set');
     return null;
   }
@@ -161,10 +165,14 @@ export function startJiraMcpBridge(port: number): ChildProcess | null {
   const proc = spawn(
     supergatewayBin,
     [
-      '--stdio', mcpAtlassianBin,
-      '--outputTransport', 'streamableHttp',
-      '--streamableHttpPath', '/mcp',
-      '--port', String(port),
+      '--stdio',
+      mcpAtlassianBin,
+      '--outputTransport',
+      'streamableHttp',
+      '--streamableHttpPath',
+      '/mcp',
+      '--port',
+      String(port),
     ],
     {
       env: {
