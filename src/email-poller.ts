@@ -192,6 +192,13 @@ async function poll(
         const fromAddr = msg.from?.emailAddress?.address || '';
         if (!fromAddr) continue;
         if (isNewsletter(fromAddr, whitelist)) {
+          let newsletterBody =
+            msg.body.contentType === 'html'
+              ? stripHtml(msg.body.content)
+              : msg.body.content;
+          if (newsletterBody.length > 3000) {
+            newsletterBody = newsletterBody.slice(0, 3000) + '\n[...truncated]';
+          }
           appendToNewsletterQueue(targetFolder, {
             mailbox,
             from: fromAddr,
@@ -199,6 +206,7 @@ async function poll(
             subject: msg.subject,
             receivedAt: msg.receivedDateTime,
             message_id: msg.id,
+            body: newsletterBody,
           });
           totalWhitelisted++;
           await markRead(mailbox, msg.id);

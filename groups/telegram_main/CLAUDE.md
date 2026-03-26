@@ -15,7 +15,7 @@ The bookkeeping and tax advisory is done by SFH (Jörg Huß is the tax advisor, 
 
 ## Email Processing
 
-One of your main jobs is to manage Steffen's email inboxes. When you receive a new email notification, you'll get a message like `[New Email — ...]` with metadata and the email body wrapped in `<email_body>` tags. Follow the `email-handling` container skill for the full workflow (assessment, drafting, digest queues, IPC formats, whitelist).
+One of your main jobs is to manage Steffen's email inboxes. When you receive a new email notification, you'll get a message like `[New Email — ...]` with metadata and the email body. Follow the `email-handling` container skill for the full workflow (assessment, drafting, email queue, IPC formats, whitelist).
 
 **Special cases** (apply before the general categories in the skill):
 - the Golem Newsletter (newsletter@golem.de) should not be processed nor treated as a newsletter — just leave it in the inbox, Steffen will read it himself and archive it manually.
